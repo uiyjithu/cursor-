@@ -28,15 +28,19 @@
         .button:hover {
             background-color: #45a049;
         }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <h1>Resume Upload</h1>
     <div class="upload-container">
-        <form action="/upload" method="post" enctype="multipart/form-data">
+        <form id="uploadForm">
             <h2>Upload Your Resume</h2>
-            <p>Supported formats: PDF, DOC, DOCX</p>
-            <input type="file" name="resume" accept=".pdf,.doc,.docx" required>
+            <p>Supported formats: PDF, DOC, DOCX (Max size: 5MB)</p>
+            <input type="file" name="resume" id="resumeInput" accept=".pdf,.doc,.docx" required>
             <br><br>
             <button type="submit" class="button">Upload Resume</button>
         </form>
@@ -44,20 +48,58 @@
     <div id="message"></div>
 
     <script>
-        document.querySelector('form').addEventListener('submit', async (e) => {
+        // Select the form and file input elements
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('resumeInput');
+        const messageDiv = document.getElementById('message');
+
+        // Client-side file validation
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
+            const maxFileSize = 5 * 1024 * 1024; // 5MB
+
+            // Check file extension
+            if (!allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))) {
+                alert('Invalid file type. Please upload a PDF, DOC, or DOCX file.');
+                fileInput.value = ''; // Clear the input
+                return;
+            }
+
+            // Check file size
+            if (file.size > maxFileSize) {
+                alert('File is too large. Maximum size is 5MB.');
+                fileInput.value = ''; // Clear the input
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            
+
+            // Show a loading message
+            messageDiv.innerHTML = `<p style="color: blue;">Uploading...</p>`;
+
+            // Prepare form data for submission
+            const formData = new FormData(form);
+
             try {
+                // Send the file to the server
                 const response = await fetch('/upload', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
                 });
-                
-                const result = await response.text();
-                document.getElementById('message').innerHTML = `<p style="color: green;">${result}</p>`;
+
+                // Parse and handle the response
+                const result = await response.json();
+                if (response.ok) {
+                    messageDiv.innerHTML = `<p style="color: green;">${result.message || "File uploaded successfully!"}</p>`;
+                } else {
+                    messageDiv.innerHTML = `<p style="color: red;">${result.error || "Failed to upload file."}</p>`;
+                }
             } catch (error) {
-                document.getElementById('message').innerHTML = `<p style="color: red;">Error uploading file: ${error}</p>`;
+                // Handle any errors during the fetch
+                messageDiv.innerHTML = `<p style="color: red;">Error uploading file: ${error.message}</p>`;
             }
         });
     </script>
